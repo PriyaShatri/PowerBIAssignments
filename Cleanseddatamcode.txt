@@ -1,0 +1,16 @@
+let
+    Source = Excel.Workbook(File.Contents("D:\PowerBI\CleanseData.xlsx"), null, true),
+    Sheet1_Sheet = Source{[Item="Sheet1",Kind="Sheet"]}[Data],
+    #"Promoted Headers" = Table.PromoteHeaders(Sheet1_Sheet, [PromoteAllScalars=true]),
+    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"Annual Sales Report", type text}, {"Column2", type text}, {"Column3", type text}, {"Column4", type number}, {"Column5", type number}, {"Column6", type number}, {"Column7", type number}, {"Column8", type any}}),
+    #"Removed Top2 null Rows" = Table.Skip(#"Changed Type",2),
+    #"used first row as headers" = Table.PromoteHeaders(#"Removed Top2 null Rows", [PromoteAllScalars=true]),
+    #"headers datatype is automatically changed" = Table.TransformColumnTypes(#"used first row as headers",{{"Product Category", type text}, {"Product Sub Category", type text}, {"UPC", Int64.Type}, {"2011", type number}, {"2012", type number}, {"2013", type number}, {"2014", type number}, {"Grand Total", type number}}),
+    #"Removed UPC Column" = Table.RemoveColumns(#"headers datatype is automatically changed",{"UPC"}),
+    #"Filtered Rows excluding null from prod sub category" = Table.SelectRows(#"Removed UPC Column", each ([Product Sub Category] <> null)),
+    #"Filled Down for prod category" = Table.FillDown(#"Filtered Rows excluding null from prod sub category",{"Product Category"}),
+    #"Unpivoted Columns years" = Table.UnpivotOtherColumns(#"Filled Down for prod category", {"Product Category", "Product Sub Category", "Grand Total"}, "Attribute", "Value"),
+    #"removed grand total" = Table.RemoveColumns(#"Unpivoted Columns years",{"Grand Total"}),
+    #"Renamed as sales Columns" = Table.RenameColumns(#"removed grand total",{{"Value", "sales"}, {"Attribute", "year"}})
+in
+    #"Renamed as sales Columns"
